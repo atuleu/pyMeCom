@@ -288,20 +288,26 @@ class App:
             "Target: %6.3f °C, Interpolated: %6.3f °C Enabled %-5s"
             % (self._config.target, target, self._config.enabled)
         )
+        bold = "\033[1m"
+        reset = "\033[0m"
         print("┌─────────┬─────────────┬───────────┬─────────────┬─────────────┐")
-        print("│ Channel │ Object (°C) │ Sink (°C) | Current (A) │ Tension (V) │")
+        print(
+            f"│ {bold}Channel{reset} │ {bold}Object (°C){reset} │ {bold}Sink (°C){reset} │ {bold}Current (A){reset} │ {bold}Tension (V){reset} │"
+        )
         print("├─────────┼─────────────┼───────────┼─────────────┼─────────────┤")
         for i, s in enumerate(statuses):
+            cin = s.color_in()
+            cout = s.color_out()
             print(
-                "│%s %7d │ %-11.3f │ %-9.3f │ %-11.3f │ %-11.3f %s│"
+                "│%s %7d %s│%s %-11.3f %s│%s %-9.3f %s│%s %-11.3f %s│%s %-11.3f %s│"
                 % (
-                    s.color_in(),
-                    i + 1,
-                    s.object_temperature,
-                    s.sink_temperature,
-                    s.output_current,
-                    s.output_voltage,
-                    s.color_out(),
+                    # fmt: off
+                    cin, i + 1, cout,
+                    cin, s.object_temperature, cout,
+                    cin, s.sink_temperature, cout,
+                    cin, s.output_current, cout,
+                    cin, s.output_voltage, cout,
+                    # fmt: on
                 )
             )
         print("└─────────┴─────────────┴───────────┴─────────────┴─────────────┘")
