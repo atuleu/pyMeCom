@@ -11,12 +11,18 @@ from serial import Serial
 from PyCRC.CRCCCITT import CRCCCITT
 
 # from this package
-from .exceptions import ResponseException, WrongResponseSequence, WrongChecksum, ResponseTimeout, UnknownParameter
+from .exceptions import (
+    ResponseException,
+    WrongResponseSequence,
+    WrongChecksum,
+    ResponseTimeout,
+    UnknownParameter,
+)
 from .commands import TEC_PARAMETERS, LDD_PARAMETERS, ERRORS
 
 
 class Parameter(object):
-    """"
+    """ "
     Every parameter dict from commands.py is parsed into a Parameter instance.
     """
 
@@ -32,7 +38,7 @@ class Parameter(object):
 
 
 class Error(object):
-    """"
+    """ "
     Every error dict from commands.py is parsed into a Error instance.
     """
 
@@ -56,21 +62,21 @@ class Error(object):
 
 class ParameterList(object):
     """
-    Contains a list of Parameter() for either TEC (metype = 'TEC') 
+    Contains a list of Parameter() for either TEC (metype = 'TEC')
     or LDD (metype = 'TEC') controller.
     Provides searching via id or name.
     :param error_dict: dict
     """
 
-    def __init__(self,metype='TEC'):
+    def __init__(self, metype="TEC"):
         """
         Reads the parameter dicts from commands.py.
         """
         self._PARAMETERS = []
-        if metype == 'TEC':
+        if metype == "TEC":
             for parameter in TEC_PARAMETERS:
                 self._PARAMETERS.append(Parameter(parameter))
-        elif metype =='LDD':
+        elif metype == "LDD":
             for parameter in LDD_PARAMETERS:
                 self._PARAMETERS.append(Parameter(parameter))
         else:
@@ -103,7 +109,9 @@ class MeFrame(object):
     """
     Basis structure of a MeCom frame as defined in the specs.
     """
+
     _TYPES = {"UINT8": "!H", "UINT16": "!L", "INT32": "!i", "FLOAT32": "!f"}
+    _SIZES = {"UINT8": 2, "UINT16": 4, "INT32": 8, "FLOAT32": 8}
     _SOURCE = ""
     _EOL = "\r"  # carriage return
 
@@ -135,7 +143,11 @@ class MeFrame(object):
         :return: bytes
         """
         # first part
-        frame = self._SOURCE + "{:02X}".format(self.ADDRESS) + "{:04X}".format(self.SEQUENCE)
+        frame = (
+            self._SOURCE
+            + "{:02X}".format(self.ADDRESS)
+            + "{:04X}".format(self.SEQUENCE)
+        )
         # payload can be str or float or int
         for p in self.PAYLOAD:
             if type(p) is str:
@@ -145,7 +157,9 @@ class MeFrame(object):
             elif type(p) is float:
                 # frame += hex(unpack('<I', pack('<f', p))[0])[2:].upper()  # please do not ask
                 # if p = 0 CRC fails, e.g. !01000400000000 composes to b'!0100040' / missing zero padding
-                frame += '{:08X}'.format(unpack('<I', pack('<f', p))[0])   #still do not aks
+                frame += "{:08X}".format(
+                    unpack("<I", pack("<f", p))[0]
+                )  # still do not aks
         # if we only want a partial frame, return here
         if part:
             return frame.encode()
@@ -175,6 +189,7 @@ class Query(MeFrame):
     Basic structure of a query to get or set a parameter. Has the attribute RESPONSE which contains the answer received
     by the device. The response is set via set_response
     """
+
     _SOURCE = "#"
     _PAYLOAD_START = None
 
@@ -199,9 +214,14 @@ class Query(MeFrame):
         self.SEQUENCE = sequence
         if parameter is not None:
             # UNIT16 4 hex digits
-            self.PAYLOAD.append("{:04X}".format(parameter.id))
-        # UNIT8 2 hex digits
-        self.PAYLOAD.append("{:02X}".format(parameter_instance))
+            if isinstance(parameter, list):
+                self.PAYLOAD.append("{:02X}".format(len(parameter)))
+            else:
+                parameter = [parameter]
+                parameter_instance = [parameter_instance]
+            for p, instance in zip(parameter, parameter_instance):
+                self.PAYLOAD.append("{:04X}".format(p.id))
+                self.PAYLOAD.append("{:02X}".format(instance))
 
     def set_response(self, response_frame):
         """
@@ -219,7 +239,7 @@ class Query(MeFrame):
             self.RESPONSE = IFResponse()
             self.RESPONSE.decompose(response_frame)
         # is it an error packet?
-        elif b'+' in response_frame:
+        elif b"+" in response_frame:
             self.RESPONSE = DeviceError()
             self.RESPONSE.decompose(response_frame)
         # nope it's a response to a parameter query
@@ -237,6 +257,7 @@ class VR(Query):
     """
     Implementing query to get a parameter from the device (?VR).
     """
+
     _PAYLOAD_START = "?VR"
 
     def __init__(self, parameter, sequence=1, address=0, parameter_instance=1):
@@ -248,18 +269,55 @@ class VR(Query):
         :param parameter_instance: int
         """
         # init header (equal for get and set queries
-        super(VR, self).__init__(parameter=parameter,
-                         sequence=sequence,
-                         address=address,
-                         parameter_instance=parameter_instance)
+        super(VR, self).__init__(
+            parameter=parameter,
+            sequence=sequence,
+            address=address,
+            parameter_instance=parameter_instance,
+        )
         # initialize response
         self._RESPONSE_FORMAT = parameter.format
+
+
+class VX(Query):
+    """
+    Implementing query to get a bulk parameter list from the device (?VX).
+    """
+
+    _PAYLOAD_START = "?VX"
+
+    def __init__(
+        self,
+        parameters,
+        parameter_instances=None,
+        sequence=1,
+        address=0,
+    ):
+        """
+        Create a query to get a parameter value.
+        :param parameter: Parameter
+        :param sequence: int
+        :param address: int
+        :param parameter_instance: int
+        """
+        # init header (equal for get and set queries
+        if parameter_instances is None:
+            parameter_instances = [1] * len(parameters)
+        super(VX, self).__init__(
+            parameter=parameters,
+            sequence=sequence,
+            address=address,
+            parameter_instance=parameter_instances,
+        )
+        # initialize response
+        self._RESPONSE_FORMAT = [p.format for p in parameters]
 
 
 class VS(Query):
     """
     Implementing query to set a parameter from the device (VS).
     """
+
     _PAYLOAD_START = "VS"
 
     def __init__(self, value, parameter, sequence=1, address=0, parameter_instance=1):
@@ -272,24 +330,24 @@ class VS(Query):
         :param parameter_instance: int
         """
         # init header (equal for get and set queries)
-        super(VS, self).__init__(parameter=parameter,
-                         sequence=sequence,
-                         address=address,
-                         parameter_instance=parameter_instance)
+        super(VS, self).__init__(
+            parameter=parameter,
+            sequence=sequence,
+            address=address,
+            parameter_instance=parameter_instance,
+        )
 
         # the set value
         self.PAYLOAD.append(value)
-
         # no need to initialize response format, we want ACK
-        
-        
 
 
 class RS(Query):
     """
     Implementing system reset.
     """
-    _PAYLOAD_START = 'RS'
+
+    _PAYLOAD_START = "RS"
 
     def __init__(self, sequence=1, address=0, parameter_instance=1):
         """
@@ -298,20 +356,24 @@ class RS(Query):
         :param address: int
         :param parameter_instance: int
         """
-        
+
         # init header (equal for get and set queries)
-        super(RS, self).__init__(parameter=None,
-                         sequence=sequence,
-                         address=address,
-                         parameter_instance=parameter_instance)
+        super(RS, self).__init__(
+            parameter=None,
+            sequence=sequence,
+            address=address,
+            parameter_instance=parameter_instance,
+        )
 
         # no need to initialize response format, we want ACK
-        
+
+
 class IF(Query):
     """
     Implementing device info query.
     """
-    _PAYLOAD_START = '?IF'
+
+    _PAYLOAD_START = "?IF"
 
     def __init__(self, sequence=1, address=0, parameter_instance=1):
         """
@@ -320,12 +382,14 @@ class IF(Query):
         :param address: int
         :param parameter_instance: int
         """
-        
+
         # init header (equal for get and set queries)
-        super(IF, self).__init__(parameter=None,
-                         sequence=sequence,
-                         address=address,
-                         parameter_instance=parameter_instance)
+        super(IF, self).__init__(
+            parameter=None,
+            sequence=sequence,
+            address=address,
+            parameter_instance=parameter_instance,
+        )
 
         # no need to initialize response format, we want ACK
 
@@ -334,8 +398,9 @@ class VRResponse(MeFrame):
     """
     Frame for the device response to a VR() query.
     """
+
     _SOURCE = "!"
-    _RESPONSE_FORMAT = None
+    _RESPONSE_FORMATS = None
 
     def __init__(self, response_format):
         """
@@ -343,7 +408,11 @@ class VRResponse(MeFrame):
         :param response_format: str
         """
         super(VRResponse, self).__init__()
-        self._RESPONSE_FORMAT = self._TYPES[response_format]
+        if not isinstance(response_format, list):
+            response_format = [response_format]
+        self._RESPONSE_FORMATS = [
+            (self._TYPES[fmt], self._SIZES[fmt]) for fmt in response_format
+        ]
 
     def decompose(self, frame_bytes):
         """
@@ -351,12 +420,20 @@ class VRResponse(MeFrame):
         :param frame_bytes: bytes
         :return:
         """
-        assert self._RESPONSE_FORMAT is not None
+        assert self._RESPONSE_FORMATS is not None
         frame_bytes = self._SOURCE.encode() + frame_bytes
         self._decompose_header(frame_bytes)
 
         frame = frame_bytes.decode()
-        self.PAYLOAD = [unpack(self._RESPONSE_FORMAT, bytes.fromhex(frame[7:15]))[0]]  # convert hex to float or int
+        self.PAYLOAD = []
+        starts = 7
+        for fmt, size in self._RESPONSE_FORMATS:
+            # convert data to UINT8,UINT16,INT32 or FLOAT32
+            self.PAYLOAD.append(
+                unpack(fmt, bytes.fromhex(frame[starts : (starts + 8)]))[0]
+            )
+            starts += size
+
         self.crc(int(frame[-4:], 16))  # sets crc or raises
 
 
@@ -364,8 +441,9 @@ class ACK(MeFrame):
     """
     ACK command sent by the device.
     """
+
     _SOURCE = "!"
-    
+
     def decompose(self, frame_bytes):
         """
         Takes bytes as input and builds the instance.
@@ -374,15 +452,16 @@ class ACK(MeFrame):
         """
         frame_bytes = self._SOURCE.encode() + frame_bytes
         self._decompose_header(frame_bytes)
-        
+
         frame = frame_bytes.decode()
         self.CRC = int(frame[-4:], 16)
-        
+
 
 class IFResponse(MeFrame):
     """
     ACK command sent by the device.
     """
+
     _SOURCE = "!"
 
     def crc(self, in_crc=None):
@@ -411,6 +490,7 @@ class DeviceError(MeFrame):
     """
     Queries failing return a device error, implemented as repsonse by this class.
     """
+
     _SOURCE = "!"
 
     def __init__(self):
@@ -440,7 +520,11 @@ class DeviceError(MeFrame):
         :return:
         """
         # first part
-        frame = self._SOURCE + "{:02X}".format(self.ADDRESS) + "{:04X}".format(self.SEQUENCE)
+        frame = (
+            self._SOURCE
+            + "{:02X}".format(self.ADDRESS)
+            + "{:04X}".format(self.SEQUENCE)
+        )
         # payload is ['+', #_of_error]
         frame += self.PAYLOAD[0]
         frame += "{:02x}".format(self.PAYLOAD[1])
@@ -485,9 +569,12 @@ class MeCom:
 
     For a usage example see __main__
     """
+
     SEQUENCE_COUNTER = 1
 
-    def __init__(self, serialport="/dev/ttyUSB0", timeout=1, baudrate=57600,metype = 'TEC'):
+    def __init__(
+        self, serialport="/dev/ttyUSB0", timeout=1, baudrate=57600, metype="TEC"
+    ):
         """
         Initialize communication with serial port.
         :param serialport: str
@@ -495,7 +582,9 @@ class MeCom:
         :param metype: str: either 'TEC' or 'LDD'
         """
         # initialize serial connection
-        self.ser = Serial(port=serialport, timeout=timeout, write_timeout=timeout, baudrate=baudrate)
+        self.ser = Serial(
+            port=serialport, timeout=timeout, write_timeout=timeout, baudrate=baudrate
+        )
 
         # start protocol thread
         # self.protocol = ReaderThread(serial_instance=self.ser, protocol_factory=MePacket)
@@ -521,12 +610,15 @@ class MeCom:
         :param parameter_id: int
         :return: Parameter
         """
-        return self.PARAMETERS.get_by_name(parameter_name) if parameter_name is not None\
+        return (
+            self.PARAMETERS.get_by_name(parameter_name)
+            if parameter_name is not None
             else self.PARAMETERS.get_by_id(parameter_id)
+        )
 
     def _inc(self):
         self.SEQUENCE_COUNTER += 1
-        # sequence in controller is int16 and overflows 
+        # sequence in controller is int16 and overflows
         self.SEQUENCE_COUNTER = self.SEQUENCE_COUNTER % (2**16)
 
     @staticmethod
@@ -539,7 +631,9 @@ class MeCom:
         # did we encounter an error?
         if type(query.RESPONSE) is DeviceError:
             code, description, symbol = query.RESPONSE.error()
-            raise ResponseException("device {} raised {}".format(query.RESPONSE.ADDRESS, description))
+            raise ResponseException(
+                "device {} raised {}".format(query.RESPONSE.ADDRESS, description)
+            )
 
     def _read(self, size):
         """
@@ -565,8 +659,10 @@ class MeCom:
 
         # initialize response and carriage return
         cr = "\r".encode()
-        response_frame = b''
-        response_byte = self._read(size=1)  # read one byte at a time, timeout is set on instance level
+        response_frame = b""
+        response_byte = self._read(
+            size=1
+        )  # read one byte at a time, timeout is set on instance level
 
         # read until stop byte
         while response_byte != cr:
@@ -599,7 +695,9 @@ class MeCom:
         parameter = self._find_parameter(parameter_name, parameter_id)
 
         # execute query
-        vr = self._execute(VR(parameter=parameter, sequence=self.SEQUENCE_COUNTER, *args, **kwargs))
+        vr = self._execute(
+            VR(parameter=parameter, sequence=self.SEQUENCE_COUNTER, *args, **kwargs)
+        )
 
         # increment sequence counter
         self._inc()
@@ -624,7 +722,15 @@ class MeCom:
         parameter = self._find_parameter(parameter_name, parameter_id)
 
         # execute query
-        vs = self._execute(VS(value=value, parameter=parameter, sequence=self.SEQUENCE_COUNTER, *args, **kwargs))
+        vs = self._execute(
+            VS(
+                value=value,
+                parameter=parameter,
+                sequence=self.SEQUENCE_COUNTER,
+                *args,
+                **kwargs,
+            )
+        )
 
         # increment sequence counter
         self._inc()
@@ -643,11 +749,51 @@ class MeCom:
         :return: int or float
         """
         # get the query object
-        vr = self._get(parameter_id=parameter_id, parameter_name=parameter_name, *args, **kwargs)
+        vr = self._get(
+            parameter_id=parameter_id, parameter_name=parameter_name, *args, **kwargs
+        )
 
         return vr.RESPONSE.PAYLOAD[0]
 
-    def set_parameter(self, value, parameter_name=None, parameter_id=None, *args, **kwargs):
+    def get_bulk_parameters(
+        self,
+        parameter_names=None,
+        parameter_ids=None,
+        *args,
+        **kwargs,
+    ):
+        assert isinstance(parameter_names, list) or isinstance(paremeter_ids, list)
+        if parameter_names is None:
+            parameter_names = [None] * len(parameter_ids)
+        if parameter_ids is None:
+            parameter_ids = [None] * len(parameter_names)
+        parameters = []
+        parameter_instances = []
+        for pname, pid in zip(parameter_names, parameter_ids):
+            instance = 1
+            if isinstance(pname, tuple):
+                pname, instance = pname
+            if isinstance(pid, tuple):
+                pid, instance = pid
+            parameters.append(self._find_parameter(pname, pid))
+            parameter_instances.append(instance)
+
+        vx = self._execute(
+            VX(
+                parameters=parameters,
+                parameter_instances=parameter_instances,
+                sequence=self.SEQUENCE_COUNTER,
+                *args,
+                **kwargs,
+            )
+        )
+
+        self._inc()
+        return tuple(v for v in vx.RESPONSE.PAYLOAD)
+
+    def set_parameter(
+        self, value, parameter_name=None, parameter_id=None, *args, **kwargs
+    ):
         """
         Set the new value of a parameter given by name or id.
         Returns success.
@@ -659,28 +805,34 @@ class MeCom:
         :return: bool
         """
         # get the query object
-        vs = self._set(value=value, parameter_id=parameter_id, parameter_name=parameter_name, *args, **kwargs)
+        vs = self._set(
+            value=value,
+            parameter_id=parameter_id,
+            parameter_name=parameter_name,
+            *args,
+            **kwargs,
+        )
 
         # check if value setting has succeeded
         #
         # Not necessary as we get an acknolewdge response or Value is out of range
-        # exception when an invalid value was passed. 
+        # exception when an invalid value was passed.
         # current implementation also often fails due to rounding, e.g. setting 1.0
         # but returning 0.999755859375 when performing a self.get_parameter
         # value_set = self.get_parameter(parameter_id=parameter_id, parameter_name=parameter_name, *args, **kwargs)
 
         # return True if we got an ACK
         return type(vs.RESPONSE) == ACK
-    
-    def reset_device(self,*args, **kwargs):
+
+    def reset_device(self, *args, **kwargs):
         """
         Resets the device after an error has occured
         """
         rs = self._execute(RS(sequence=self.SEQUENCE_COUNTER, *args, **kwargs))
         self._inc()
         return type(rs.RESPONSE) == ACK
-    
-    def info(self,*args, **kwargs):
+
+    def info(self, *args, **kwargs):
         """
         Resets the device after an error has occured
         """
@@ -688,8 +840,6 @@ class MeCom:
         self._inc()
         return info.RESPONSE.PAYLOAD
 
-
-    
     # returns device address
     identify = partialmethod(get_parameter, parameter_name="Device Address")
     """
@@ -726,8 +876,12 @@ class MeCom:
         return status_name
 
     # enable or disable auto saving to flash
-    enable_autosave = partialmethod(set_parameter, value=0, parameter_name="Save Data to Flash")
-    disable_autosave = partialmethod(set_parameter, value=1, parameter_name="Save Data to Flash")
+    enable_autosave = partialmethod(
+        set_parameter, value=0, parameter_name="Save Data to Flash"
+    )
+    disable_autosave = partialmethod(
+        set_parameter, value=1, parameter_name="Save Data to Flash"
+    )
 
     def write_to_flash(self, *args, **kwargs):
         """
@@ -763,7 +917,9 @@ if __name__ == "__main__":
         print("query for object temperature, measured temperature {}C".format(temp))
 
         # is the loop stable?
-        stable_id = mc.get_parameter(parameter_name="Temperature is Stable", address=address)
+        stable_id = mc.get_parameter(
+            parameter_name="Temperature is Stable", address=address
+        )
         if stable_id == 0:
             stable = "temperature regulation is not active"
         elif stable_id == 1:
