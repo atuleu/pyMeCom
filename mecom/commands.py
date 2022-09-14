@@ -5,6 +5,7 @@ https://www.meerstetter.ch/category/35-latest-communication-protocols
 
 
 TEC_PARAMETERS = [
+    # fmt: off
     {"id": 104, "name": "Device Status", "format": "INT32"},
     {"id": 105, "name": "Error Number", "format": "INT32"},
     {"id": 108, "name": "Save Data to Flash", "format": "INT32"},
@@ -26,6 +27,12 @@ TEC_PARAMETERS = [
     {"id": 2051, "name": "Device Address", "format": "INT32"},
 
     {"id": 3000, "name": "Target Object Temp (Set)", "format": "FLOAT32"},
+    {"id": 3010, "name": "Kp", "format": "FLOAT32"},
+    {"id": 3011, "name": "Td", "format": "FLOAT32"},
+    {"id": 3012, "name": "Ti", "format": "FLOAT32"},
+    {"id": 3013, "name": "D Part Damping PT1", "format": "FLOAT32"},
+
+
     {"id": 6100, "name": "GPIO Function", "format": "INT32"},
     {"id": 6101, "name": "GPIO Level Assignment", "format": "INT32"},
     {"id": 6102, "name": "GPIO Hardware Configuration", "format": "INT32"},
@@ -40,13 +47,15 @@ TEC_PARAMETERS = [
     {"id": 52103, "name": "Read Input States", "format": "INT32"},
 
     {"id": 50000, "name": "Live Enable", "format": "INT32"},
+    {"id": 50010, "name": "Sine Ramp Start Point", "format": "INT32"},
 
     {"id": 52200, "name": "External Object Temperature", "format": "FLOAT32"},
+    # fmt: on
 ]
 
 
-
 LDD_PARAMETERS = [
+    # fmt: off
     {"id": 104, "name": "Device Status", "format": "INT32"},
     {"id": 108, "name": "Save Data to Flash", "format": "INT32"},
     {"id": 109, "name": "Flash Status", "format": "INT32"},
@@ -58,8 +67,8 @@ LDD_PARAMETERS = [
     {"id": 2001, "name": "Current CW", "format": "FLOAT32"},
     {"id": 2020, "name": "Input Source", "format": "INT32"},
     {"id": 102, "name": "Device Serial Number", "format": "INT32"},
-    {"id": 3050 , "name": "Baud Rate", "format": "INT32"},
-    {"id": 3051 , "name": "Response Delay ", "format": "INT32"},
+    {"id": 3050, "name": "Baud Rate", "format": "INT32"},
+    {"id": 3051, "name": "Response Delay ", "format": "INT32"},
     {"id": 3080, "name": "Hardware PIN", "format": "INT32"},
     {"id": 6100, "name": "GPIO Function", "format": "INT32"},
     {"id": 6101, "name": "GPIO Level Assignment", "format": "INT32"},
@@ -70,9 +79,11 @@ LDD_PARAMETERS = [
     {"id": 52101, "name": "Set Output to Push-Pull", "format": "INT32"},
     {"id": 52102, "name": "Set Output States", "format": "INT32"},
     {"id": 52103, "name": "Read Input States", "format": "INT32"},
+    # fmt: on
 ]
-    
+
 ERRORS = [
+    # fmt: off
     {"code": 1, "symbol": "EER_CMD_NOT_AVAILABLE", "description": "Command not available"},
     {"code": 2, "symbol": "EER_DEVICE_BUSY", "description": "Device is busy"},
     {"code": 3, "symbol": "ERR_GENERAL_COM", "description": "General communication error"},
@@ -83,4 +94,5 @@ ERRORS = [
     {"code": 8, "symbol": "EER_PAR_INST_NOT_AVAILABLE", "description": "Parameter is read only"},
     {"code": 20, "symbol": "MEPORT_ERROR_SET_TIMEOUT", "description": "timeout reached, value cannot be set"},
     {"code": 21, "symbol": "MEPORT_ERROR_QUERY_TIMEOUT", "description": "timeout reached query cannot be served"},
+    # fmt: on
 ]
