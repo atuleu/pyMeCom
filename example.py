@@ -4,15 +4,12 @@
 import logging
 from mecom import MeCom, ResponseException, WrongChecksum
 from serial import SerialException
-
+import sys
 
 # default queries from command table below
 DEFAULT_QUERIES = [
-    "loop status",
-    "object temperature",
-    "target object temperature",
-    "output current",
-    "output voltage"
+    "loop status", "object temperature", "target object temperature",
+    "output current", "output voltage"
 ]
 
 # syntax
@@ -36,7 +33,12 @@ class MeerstetterTEC(object):
     def _tearDown(self):
         self.session().stop()
 
-    def __init__(self, port="/dev/ttyUSB0", channel=1, queries=DEFAULT_QUERIES, *args, **kwars):
+    def __init__(self,
+                 port="/dev/ttyUSB0",
+                 channel=1,
+                 queries=DEFAULT_QUERIES,
+                 *args,
+                 **kwars):
         assert channel in (1, 2)
         self.channel = channel
         self.port = port
@@ -61,7 +63,10 @@ class MeerstetterTEC(object):
         for description in self.queries:
             id, unit = COMMAND_TABLE[description]
             try:
-                value = self.session().get_parameter(parameter_id=id, address=self.address, parameter_instance=self.channel)
+                value = self.session().get_parameter(
+                    parameter_id=id,
+                    address=self.address,
+                    parameter_instance=self.channel)
                 data.update({description: (value, unit)})
             except (ResponseException, WrongChecksum) as ex:
                 self.session().stop()
@@ -77,8 +82,12 @@ class MeerstetterTEC(object):
         """
         # assertion to explicitly enter floats
         assert type(value) is float
-        logging.info("set object temperature for channel {} to {} C".format(self.channel, value))
-        return self.session().set_parameter(parameter_id=3000, value=value, address=self.address, parameter_instance=self.channel)
+        logging.info("set object temperature for channel {} to {} C".format(
+            self.channel, value))
+        return self.session().set_parameter(parameter_id=3000,
+                                            value=value,
+                                            address=self.address,
+                                            parameter_instance=self.channel)
 
     def _set_enable(self, enable=True):
         """
@@ -88,8 +97,12 @@ class MeerstetterTEC(object):
         :return:
         """
         value, description = (1, "on") if enable else (0, "off")
-        logging.info("set loop for channel {} to {}".format(self.channel, description))
-        return self.session().set_parameter(value=value, parameter_name="Status", address=self.address, parameter_instance=self.channel)
+        logging.info("set loop for channel {} to {}".format(
+            self.channel, description))
+        return self.session().set_parameter(value=value,
+                                            parameter_name="Status",
+                                            address=self.address,
+                                            parameter_instance=self.channel)
 
     def enable(self):
         return self._set_enable(True)
@@ -100,10 +113,16 @@ class MeerstetterTEC(object):
 
 if __name__ == '__main__':
     # start logging
-    logging.basicConfig(level=logging.DEBUG, format="%(asctime)s:%(module)s:%(levelname)s:%(message)s")
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format="%(asctime)s:%(module)s:%(levelname)s:%(message)s")
+
+    dev = "/dev/ttyUSB0"
+    if len(sys.argv) > 1:
+        dev = sys.argv[1]
 
     # initialize controller
-    mc = MeerstetterTEC()
+    mc = MeerstetterTEC(port=dev)
 
     # get the values from DEFAULT_QUERIES
     print(mc.get_data())

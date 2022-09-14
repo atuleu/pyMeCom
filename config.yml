@@ -1,0 +1,3 @@
+enabled: True # True will drive False will not drive
+target: 18 # °C
+ramp: 40 # maximum ramp in K per hour

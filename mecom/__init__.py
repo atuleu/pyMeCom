@@ -8,4 +8,5 @@ mecom.py contains the communication logic
 """
 
 from .mecom import MeCom, VR, VS, Parameter
+from .mecom import Query
 from .exceptions import ResponseException, WrongChecksum
