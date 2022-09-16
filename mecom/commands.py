@@ -27,11 +27,19 @@ TEC_PARAMETERS = [
     {"id": 2051, "name": "Device Address", "format": "INT32"},
 
     {"id": 3000, "name": "Target Object Temp (Set)", "format": "FLOAT32"},
+    {"id": 3002, "name": "Proximity Width", "format": "FLOAT32"},
+    {"id": 3003, "name": "Coarse Temp Ramp", "format": "FLOAT32"},
+
     {"id": 3010, "name": "Kp", "format": "FLOAT32"},
     {"id": 3011, "name": "Td", "format": "FLOAT32"},
     {"id": 3012, "name": "Ti", "format": "FLOAT32"},
     {"id": 3013, "name": "D Part Damping PT1", "format": "FLOAT32"},
 
+    {"id": 4010, "name": "Object Lower Error Threshold", "format": "FLOAT32"},
+    {"id": 4011, "name": "Object Upper Error Threshold", "format": "FLOAT32"},
+
+    {"id": 5010, "name": "Sink Lower Error Threshold", "format": "FLOAT32"},
+    {"id": 5011, "name": "Sink Upper Error Threshold", "format": "FLOAT32"},
 
     {"id": 6100, "name": "GPIO Function", "format": "INT32"},
     {"id": 6101, "name": "GPIO Level Assignment", "format": "INT32"},
